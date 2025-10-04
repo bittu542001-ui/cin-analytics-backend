@@ -10,3 +10,4 @@ matplotlib
 seaborn
 python-dotenv
 rpy2
+lifelines
