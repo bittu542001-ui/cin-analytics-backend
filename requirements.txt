@@ -9,4 +9,3 @@ scikit-learn
 matplotlib
 seaborn
 python-dotenv
-rpy2
