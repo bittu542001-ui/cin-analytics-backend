@@ -3,30 +3,31 @@ import subprocess
 import json
 import tempfile
 import os
+from typing import Dict, Any
 
-def run_r_script(script_path, input_json):
+def run_r_script(script_path: str, input_obj: Dict[str, Any]) -> Dict[str, Any]:
     """
-    script_path: path to R script (on server)
-    input_json: python dict will be written to a temp json file and passed to Rscript
-    R script must accept one argument: path to input json and write JSON to stdout or to file.
+    Run an R script with one argument: path to a JSON input file.
+    The R script should print JSON to stdout (or write to a file and print path).
+    Returns a dict with keys: error(bool), rc(int), stdout, stderr, result(dict if JSON).
     """
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".json")
     try:
-        tmp.write(json.dumps(input_json).encode("utf-8"))
+        tmp.write(json.dumps(input_obj, default=str).encode("utf-8"))
         tmp.flush()
         tmp.close()
-        # call: Rscript script.R /tmp/input123.json
-        proc = subprocess.run(["Rscript", script_path, tmp.name], capture_output=True, text=True, check=False)
-        stdout = proc.stdout.strip()
-        stderr = proc.stderr.strip()
+        proc = subprocess.run(["Rscript", script_path, tmp.name], capture_output=True, text=True)
+        out = {"error": False, "rc": proc.returncode, "stdout": proc.stdout.strip(), "stderr": proc.stderr.strip()}
         if proc.returncode != 0:
-            return {"error": True, "stderr": stderr, "stdout": stdout, "rc": proc.returncode}
-        # assume R prints JSON to stdout
+            out["error"] = True
+            return out
+        # try parse stdout as json
         try:
-            out = json.loads(stdout) if stdout else {}
+            out_json = json.loads(proc.stdout)
+            out["result"] = out_json
         except Exception:
-            out = {"raw_stdout": stdout}
-        return {"error": False, "result": out, "stderr": stderr}
+            out["result"] = {"raw_stdout": proc.stdout.strip()}
+        return out
     finally:
         try:
             os.unlink(tmp.name)
