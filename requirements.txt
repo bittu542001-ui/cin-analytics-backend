@@ -11,3 +11,4 @@ seaborn
 python-dotenv
 rpy2
 lifelines
+requests
